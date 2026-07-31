@@ -3,7 +3,16 @@ import { ArrowRight, Compass, LineChart, MessagesSquare, ShieldCheck, Sparkle, T
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { OpportunityCard } from "@/components/opportunity/opportunity-card";
+import { AskAssistant } from "@/components/assistant/ask-assistant";
 import { useOpportunities } from "@/hooks/use-career-data";
+
+const HOME_PROMPTS = [
+  "Undergraduate scholarships for 2026 intake",
+  "Graduate trainee jobs in Lagos for a fresh graduate",
+  "Grants for a small agribusiness in Oyo State",
+  "How do I prepare for a Nigerian bank aptitude test?",
+];
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
