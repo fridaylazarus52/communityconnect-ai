@@ -132,7 +132,16 @@ function Landing() {
           </div>
         </section>
 
+        <section className="mx-auto max-w-4xl px-4 pt-16 sm:px-6">
+          <h2 className="text-3xl font-black tracking-tight text-foreground">Ask the AI assistant</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tap a suggestion — you'll get an answer straight away, no sign-in needed.
+          </p>
+          <AskAssistant className="mt-6" prompts={HOME_PROMPTS} />
+        </section>
+
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6">
+
           <h2 className="text-3xl font-black tracking-tight text-foreground">How it works</h2>
           <div className="mt-10 grid gap-5 md:grid-cols-3">
             {STEPS.map((step, i) => (
