@@ -1,7 +1,7 @@
 // api/chat.ts
 import { createFileRoute } from "@tanstack/react-router";
 import { convertToModelMessages, streamText, type UIMessage } from "ai";
-import { createLovableAiGatewayProvider, SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
+import { createOpenAIProvider, CHAT_MODEL, SYSTEM_PROMPT } from "@/lib/ai-gateway.server";
 
 type ChatBody = { messages?: unknown; threadId?: unknown };
 
@@ -10,9 +10,9 @@ export const Route = createFileRoute("/api/chat")({
     handlers: {
       POST: async ({ request }) => {
         const body = (await request.json()) as ChatBody;
-        const apiKey = process.env.LOVABLE_API_KEY;
-        if (!apiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
-        const gateway = createLovableAiGatewayProvider(apiKey);
+        const apiKey = process.env.OPENAI_API_KEY;
+        if (!apiKey) return new Response("Missing OPENAI_API_KEY", { status: 500 });
+        const openai = createOpenAIProvider(apiKey);
         if (!Array.isArray(body.messages)) {
           return new Response("messages required", { status: 400 });
         }
@@ -58,7 +58,7 @@ export const Route = createFileRoute("/api/chat")({
                 .eq("user_id", userId);
             }
 
-            const model = gateway("google/gemini-3.5-flash");
+            const model = openai(CHAT_MODEL);
             const result = streamText({
               model,
               system: SYSTEM_PROMPT,
@@ -84,7 +84,7 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         // Unauthenticated fallback: stream without persistence
-        const model = gateway("google/gemini-3.5-flash");
+        const model = openai(CHAT_MODEL);
         const result = streamText({
           model,
           system: SYSTEM_PROMPT,

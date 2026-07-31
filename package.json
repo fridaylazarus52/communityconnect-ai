@@ -12,6 +12,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@ai-sdk/openai": "^4.0.24",
     "@ai-sdk/openai-compatible": "^3.0.17",
     "@ai-sdk/react": "^4.0.45",
     "@hookform/resolvers": "^5.2.2",
@@ -74,7 +75,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
-    "@lovable.dev/vite-tanstack-config": "^2.8.2",
+    "@lovable.dev/vite-tanstack-config": "2.8.4",
     "@types/node": "^22.16.5",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

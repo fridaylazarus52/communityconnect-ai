@@ -1,13 +1,12 @@
 // ai-gateway.server.ts
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createOpenAI } from "@ai-sdk/openai";
 
-export function createLovableAiGatewayProvider(apiKey: string) {
-  return createOpenAICompatible({
-    name: "lovable-ai-gateway",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    headers: { "Lovable-API-Key": apiKey },
-  });
+/** Official OpenAI provider. Reads the key passed in from process.env.OPENAI_API_KEY. */
+export function createOpenAIProvider(apiKey: string) {
+  return createOpenAI({ apiKey });
 }
+
+export const CHAT_MODEL = "gpt-4o-mini";
 
 export const SYSTEM_PROMPT = `You are CommunityConnect AI, an assistant that helps Nigerians discover real opportunities across every life sector.
 
