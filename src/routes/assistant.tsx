@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { AskAssistant } from "@/components/assistant/ask-assistant";
 import { createThread, listThreads } from "@/lib/chat.functions";
 import { useSession } from "@/hooks/use-career-data";
+
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
