@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { MessageSquarePlus } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { AskAssistant } from "@/components/assistant/ask-assistant";
 import { createThread, listThreads } from "@/lib/chat.functions";
 import { useSession } from "@/hooks/use-career-data";
+
 
 export const Route = createFileRoute("/assistant")({
   head: () => ({
@@ -46,22 +48,21 @@ function Assistant() {
     queryFn: () => listThreads(),
   });
 
-  useEffect(() => {
-    if (!ready || !isAuthed || threadsQ.isLoading || creating) return;
+  async function openFullAssistant() {
+    if (!isAuthed || creating) return;
     const existing = threadsQ.data?.[0];
     if (existing) {
-      navigate({ to: "/chat/$threadId", params: { threadId: existing.id }, replace: true });
+      navigate({ to: "/chat/$threadId", params: { threadId: existing.id } });
       return;
     }
-    if (threadsQ.data) {
-      setCreating(true);
-      create({ data: {} })
-        .then((thread) =>
-          navigate({ to: "/chat/$threadId", params: { threadId: thread.id }, replace: true }),
-        )
-        .finally(() => setCreating(false));
+    setCreating(true);
+    try {
+      const thread = await create({ data: {} });
+      navigate({ to: "/chat/$threadId", params: { threadId: thread.id } });
+    } finally {
+      setCreating(false);
     }
-  }, [ready, isAuthed, threadsQ.data, threadsQ.isLoading, creating, create, navigate]);
+  }
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -72,30 +73,37 @@ function Assistant() {
           Career guidance that understands Nigeria
         </h1>
         <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-          {isAuthed
-            ? "Opening your assistant…"
-            : "Ask about scholarships, NYSC timing, CV structure, salary ranges or how to strengthen an application. Sign in to start a conversation."}
+          Ask about scholarships, NYSC timing, CV structure, salary ranges or how to strengthen an
+          application. Tap a suggestion to get an answer instantly.
         </p>
 
-        <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-          {PROMPTS.map((prompt) => (
-            <li key={prompt} className="surface rounded-2xl p-5 text-sm text-foreground">
-              “{prompt}”
-            </li>
-          ))}
-        </ul>
+        <AskAssistant className="mt-8" prompts={PROMPTS} />
 
-        {!isAuthed && ready && (
-          <Link
-            to="/auth"
-            search={{ mode: "signup" }}
-            className="mt-8 inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
-          >
-            <MessageSquarePlus className="h-4 w-4" aria-hidden /> Start chatting free
-          </Link>
-        )}
+        <div className="mt-8 flex flex-wrap gap-3">
+          {isAuthed && ready ? (
+            <button
+              type="button"
+              onClick={openFullAssistant}
+              disabled={creating}
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-6 py-3.5 text-sm font-semibold text-foreground transition-colors hover:border-green disabled:opacity-60"
+            >
+              <MessageSquarePlus className="h-4 w-4" aria-hidden />
+              {creating ? "Opening…" : "Continue in your saved chats"}
+            </button>
+          ) : null}
+          {!isAuthed && ready && (
+            <Link
+              to="/auth"
+              search={{ mode: "signup" }}
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground transition-transform hover:-translate-y-0.5"
+            >
+              <MessageSquarePlus className="h-4 w-4" aria-hidden /> Save your chats free
+            </Link>
+          )}
+        </div>
       </main>
       <SiteFooter />
     </div>
   );
 }
+
