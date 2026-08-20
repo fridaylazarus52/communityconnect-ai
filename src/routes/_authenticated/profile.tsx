@@ -1,6 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
+
+const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 
 const LOCATIONS = [
   "Lagos",
@@ -56,6 +58,9 @@ function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const completedFields = useMemo(() => {
     return [
@@ -93,6 +98,7 @@ function ProfilePage() {
         setEducationLevel(data?.education_level ?? "");
         setSectorInterests(data?.sector_interests ?? []);
       }
+      setUserId(user.id);
       setLoading(false);
     };
 
@@ -138,6 +144,68 @@ function ProfilePage() {
     setSectorInterests((current) =>
       current.includes(value) ? current.filter((item) => item !== value) : [...current, value],
     );
+  }
+
+  async function onAvatarSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !userId) return;
+
+    setError(null);
+    setMessage(null);
+
+    if (!file.type.startsWith("image/")) {
+      setError("Please choose an image file.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setError("Image must be smaller than 5MB.");
+      return;
+    }
+
+    setAvatarUploading(true);
+    const ext = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const path = `${userId}/avatar-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true, cacheControl: "3600" });
+
+    if (uploadError) {
+      setError(uploadError.message);
+      setAvatarUploading(false);
+      return;
+    }
+
+    const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: pub.publicUrl, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setAvatarUrl(pub.publicUrl);
+      setMessage("Profile photo updated.");
+    }
+    setAvatarUploading(false);
+  }
+
+  async function onAvatarRemove() {
+    if (!userId) return;
+    setError(null);
+    setMessage(null);
+    const { error: updateError } = await supabase
+      .from("profiles")
+      .update({ avatar_url: null, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (updateError) {
+      setError(updateError.message);
+    } else {
+      setAvatarUrl("");
+      setMessage("Profile photo removed.");
+    }
   }
 
   return (
@@ -189,17 +257,46 @@ function ProfilePage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium text-muted-foreground">Avatar URL</label>
-                <input
-                  value={avatarUrl}
-                  onChange={(event) => setAvatarUrl(event.currentTarget.value)}
-                  className="w-full rounded-2xl border border-border bg-background px-4 py-3 text-sm outline-none focus:border-green"
-                  type="url"
-                  placeholder="https://example.com/avatar.jpg"
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Optional. Use an image URL if you want a custom avatar.
-                </p>
+                <label className="mb-2 block text-sm font-medium text-muted-foreground">Profile photo</label>
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-surface text-lg font-semibold text-muted-foreground">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="Profile" className="h-full w-full object-cover" />
+                    ) : (
+                      (displayName.trim()[0] ?? "?").toUpperCase()
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={avatarUploading}
+                        className="rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold text-foreground hover:bg-accent/10 disabled:opacity-60"
+                      >
+                        {avatarUploading ? "Uploading…" : avatarUrl ? "Change photo" : "Upload photo"}
+                      </button>
+                      {avatarUrl ? (
+                        <button
+                          type="button"
+                          onClick={onAvatarRemove}
+                          disabled={avatarUploading}
+                          className="rounded-full border border-border bg-background px-4 py-2 text-xs font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-60"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-muted-foreground">JPG or PNG, up to 5MB.</p>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={onAvatarSelected}
+                    className="hidden"
+                  />
+                </div>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">

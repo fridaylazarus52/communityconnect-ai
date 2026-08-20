@@ -75,13 +75,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "New search" },
+      { title: "CommunityConnect AI — Nigerian Career & Opportunity Platform" },
       { name: "description", content: "AI-powered discovery of scholarships, jobs, grants, loans, health programs, agriculture support, internships and government schemes across Nigeria." },
-      { property: "og:title", content: "New search" },
+      { property: "og:title", content: "CommunityConnect AI — Nigerian Career & Opportunity Platform" },
       { property: "og:description", content: "AI-powered discovery of scholarships, jobs, grants, loans, health programs, agriculture support, internships and government schemes across Nigeria." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "New search" },
+      { name: "twitter:title", content: "CommunityConnect AI — Nigerian Career & Opportunity Platform" },
       { name: "twitter:description", content: "AI-powered discovery of scholarships, jobs, grants, loans, health programs, agriculture support, internships and government schemes across Nigeria." },
     ],
     links: [

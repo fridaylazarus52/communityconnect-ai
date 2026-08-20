@@ -249,6 +249,17 @@
   html {
     scroll-behavior: smooth;
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled),
+  a,
+  select,
+  summary {
+    cursor: pointer;
+  }
+  button:disabled,
+  [role="button"]:disabled {
+    cursor: not-allowed;
+  }
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);

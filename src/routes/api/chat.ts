@@ -36,26 +36,11 @@ export const Route = createFileRoute("/api/chat")({
             const uiMessages = body.messages as UIMessage[];
             const lastUser = [...uiMessages].reverse().find((m) => m.role === "user");
             if (userId && lastUser) {
-              // Insert user message
-              await supa.from("messages").insert({
-                thread_id: threadId,
-                user_id: userId,
-                role: "user",
-                parts: lastUser.parts as unknown as object,
-              });
-              // Update thread title if it's still the default
-              const title = extractText(lastUser).slice(0, 80) || "New search";
-              await supa
-                .from("threads")
-                .update({ title, updated_at: new Date().toISOString() })
-                .eq("id", threadId)
-                .eq("user_id", userId)
-                .eq("title", "New search");
-              await supa
-                .from("threads")
-                .update({ updated_at: new Date().toISOString() })
-                .eq("id", threadId)
-                .eq("user_id", userId);
+              // Best-effort persistence: don't block the LLM stream on these DB
+              // round-trips — fire them off and let them finish in the background.
+              void persistUserMessage(supa, threadId, userId, lastUser).catch((err) =>
+                console.error("chat persist error", err),
+              );
             }
 
             const model = openai(CHAT_MODEL);
@@ -97,6 +82,52 @@ export const Route = createFileRoute("/api/chat")({
     },
   },
 });
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function persistUserMessage(
+  supa: any,
+  threadId: string,
+  userId: string,
+  lastUser: UIMessage,
+): Promise<void> {
+  // A retry (e.g. after an interrupted stream) resends the same trailing
+  // user message — skip re-inserting it if it's already the last saved row.
+  const { data: latestMessage } = await supa
+    .from("messages")
+    .select("role,parts")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const alreadyPersisted =
+    latestMessage?.role === "user" &&
+    JSON.stringify(latestMessage.parts) === JSON.stringify(lastUser.parts);
+  if (alreadyPersisted) return;
+
+  await supa.from("messages").insert({
+    thread_id: threadId,
+    user_id: userId,
+    role: "user",
+    parts: lastUser.parts as unknown as object,
+  });
+
+  const updatedAt = new Date().toISOString();
+  const title = extractText(lastUser).slice(0, 80) || "New search";
+  // Update the title only if it's still the default; always bump updated_at.
+  const { count } = await supa
+    .from("threads")
+    .update({ title, updated_at: updatedAt }, { count: "exact" })
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .eq("title", "New search");
+  if (!count) {
+    await supa
+      .from("threads")
+      .update({ updated_at: updatedAt })
+      .eq("id", threadId)
+      .eq("user_id", userId);
+  }
+}
 
 function extractText(msg: UIMessage): string {
   if (!msg.parts) return "";

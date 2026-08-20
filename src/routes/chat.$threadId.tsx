@@ -7,6 +7,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
+import { ArrowLeft, MessageSquare, Plus, Trash2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getThreadMessages, listThreads, createThread, deleteThread, saveBookmark } from "@/lib/chat.functions";
 import { LogoMark } from "@/components/brand/logo";
@@ -58,6 +59,17 @@ function ChatPage() {
     return () => { mounted = false; };
   }, []);
 
+  // Once ChatWindow has mounted for this thread, keep it mounted — a later
+  // background refetch flipping threadQ.isLoading back to true must not
+  // unmount it, or an in-flight stream/answer would be dropped silently.
+  const [readyThreadId, setReadyThreadId] = useState<string | null>(null);
+  useEffect(() => {
+    if (isAuthed === undefined) return;
+    if (isAuthed === true && threadQ.isLoading) return;
+    setReadyThreadId(threadId);
+  }, [isAuthed, threadQ.isLoading, threadId]);
+  const showChat = readyThreadId === threadId;
+
   const initialMessages = useMemo<UIMessage[]>(() => {
     return (threadQ.data?.messages ?? []).map((m) => ({
       id: m.id,
@@ -67,7 +79,7 @@ function ChatPage() {
   }, [threadQ.data]);
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
+    <div className="flex h-screen overflow-hidden bg-background text-foreground">
       <Sidebar
         threads={threadsQ.data ?? []}
         activeId={threadId}
@@ -90,7 +102,7 @@ function ChatPage() {
           if (id === threadId) navigate({ to: "/dashboard" });
         }}
       />
-      {threadQ.isLoading ? (
+      {!showChat ? (
         <div className="flex-1 grid place-items-center text-sm text-muted-foreground">Loading…</div>
       ) : (
         <ChatWindow
@@ -116,52 +128,53 @@ function Sidebar({
   return (
     <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
       <Link to="/dashboard" className="flex items-center gap-2 border-b border-sidebar-border p-5 font-display text-lg">
-        <LogoMark /> etc
+        <LogoMark /> CommunityConnect
       </Link>
       <div className="flex-1 overflow-y-auto p-3">
         <button
           onClick={onNew}
           className="mb-3 flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2 text-sm font-semibold text-sidebar-primary-foreground hover:opacity-90"
         >
-          + New search
+          <Plus size={16} aria-hidden /> New search
         </button>
-        <Link
-          to="/profile"
-          className="mb-3 block rounded-full border border-border bg-card px-4 py-2 text-sm text-left text-sidebar-foreground hover:bg-sidebar-accent"
-        >
-          Edit profile
-        </Link>
         <ul className="space-y-0.5">
           {threads.map((t) => (
             <li key={t.id} className="group flex items-center gap-1">
               <Link
                 to="/chat/$threadId"
                 params={{ threadId: t.id }}
-                className={`flex-1 truncate rounded-lg px-3 py-2 text-sm hover:bg-sidebar-accent ${
-                  t.id === activeId ? "bg-sidebar-accent font-medium" : ""
+                className={`flex flex-1 items-center gap-2 truncate rounded-lg px-3 py-2 text-sm text-sidebar-foreground/90 hover:bg-sidebar-accent hover:text-sidebar-foreground ${
+                  t.id === activeId ? "bg-sidebar-accent font-medium text-sidebar-foreground" : ""
                 }`}
               >
-                {t.title}
+                <MessageSquare size={14} className="shrink-0 opacity-60" aria-hidden />
+                <span className="truncate">{t.title}</span>
               </Link>
               <button
                 onClick={() => onDelete(t.id)}
                 className="hidden rounded p-1 text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-destructive group-hover:block"
                 aria-label="Delete thread"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-                </svg>
+                <Trash2 size={14} aria-hidden />
               </button>
             </li>
           ))}
         </ul>
       </div>
-      <button
-        onClick={() => navigate({ to: "/dashboard" })}
-        className="border-t border-sidebar-border p-4 text-left text-sm text-sidebar-foreground/70 hover:text-sidebar-foreground"
-      >
-        ← Back to dashboard
-      </button>
+      <div className="border-t border-sidebar-border p-3">
+        <Link
+          to="/profile"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          <User size={15} aria-hidden /> Edit profile
+        </Link>
+        <button
+          onClick={() => navigate({ to: "/dashboard" })}
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          <ArrowLeft size={15} aria-hidden /> Back to dashboard
+        </button>
+      </div>
     </aside>
   );
 }
@@ -196,7 +209,7 @@ function ChatWindow({
     [threadId],
   );
 
-  const { messages, sendMessage, status } = useChat({
+  const { messages, sendMessage, regenerate, status, error } = useChat({
     id: threadId,
     messages: initialMessages,
     transport,
@@ -205,6 +218,7 @@ function ChatWindow({
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentFirstRef = useRef(initialMessages.length > 0);
+  const autoRetriedRef = useRef(false);
 
   // Auto-send any prefill from landing/dashboard
   useEffect(() => {
@@ -217,6 +231,18 @@ function ChatWindow({
       onFirstMessage();
     }
   }, [threadId, initialMessages.length, sendMessage, onFirstMessage]);
+
+  // If a previous visit left an unanswered question (e.g. the connection dropped
+  // mid-stream), retry once automatically so the thread doesn't get stuck silently.
+  // Guarded to fire at most once per mount (React StrictMode double-invokes effects in dev).
+  useEffect(() => {
+    if (autoRetriedRef.current) return;
+    if (initialMessages.length === 0) return;
+    if (initialMessages[initialMessages.length - 1]?.role === "user") {
+      autoRetriedRef.current = true;
+      regenerate();
+    }
+  }, [threadId, initialMessages, regenerate]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -294,6 +320,18 @@ function ChatWindow({
             {status === "submitted" && (
               <li className="text-sm text-muted-foreground">
                 <ThinkingDots />
+              </li>
+            )}
+            {status === "error" && (
+              <li className="flex items-center justify-between gap-3 rounded-2xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                <span>{error?.message || "Something went wrong. Please try again."}</span>
+                <button
+                  type="button"
+                  onClick={() => regenerate()}
+                  className="shrink-0 rounded-full border border-destructive/40 bg-background px-3 py-1.5 text-xs font-semibold text-destructive hover:bg-destructive/10"
+                >
+                  Try again
+                </button>
               </li>
             )}
           </ul>
