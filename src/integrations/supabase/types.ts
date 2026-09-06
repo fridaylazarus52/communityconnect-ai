@@ -184,15 +184,19 @@ export type Database = {
           compensation: string | null
           created_at: string
           deadline: string | null
+          eligibility: string | null
           experience_levels: string[]
           featured: boolean
           id: string
           industry: string | null
+          is_active: boolean
           is_paid: boolean
+          is_verified: boolean
           location: string
           logo_text: string | null
           organisation: string
           skills: string[]
+          source_url: string | null
           state: string | null
           summary: string
           title: string
@@ -204,15 +208,19 @@ export type Database = {
           compensation?: string | null
           created_at?: string
           deadline?: string | null
+          eligibility?: string | null
           experience_levels?: string[]
           featured?: boolean
           id?: string
           industry?: string | null
+          is_active?: boolean
           is_paid?: boolean
+          is_verified?: boolean
           location: string
           logo_text?: string | null
           organisation: string
           skills?: string[]
+          source_url?: string | null
           state?: string | null
           summary: string
           title: string
@@ -224,15 +232,19 @@ export type Database = {
           compensation?: string | null
           created_at?: string
           deadline?: string | null
+          eligibility?: string | null
           experience_levels?: string[]
           featured?: boolean
           id?: string
           industry?: string | null
+          is_active?: boolean
           is_paid?: boolean
+          is_verified?: boolean
           location?: string
           logo_text?: string | null
           organisation?: string
           skills?: string[]
+          source_url?: string | null
           state?: string | null
           summary?: string
           title?: string
@@ -250,6 +262,7 @@ export type Database = {
           education_level: string | null
           field_of_study: string | null
           id: string
+          is_admin: boolean
           location: string | null
           onboarding_completed: boolean
           opportunity_interests: string[]
@@ -269,6 +282,7 @@ export type Database = {
           education_level?: string | null
           field_of_study?: string | null
           id: string
+          is_admin?: boolean
           location?: string | null
           onboarding_completed?: boolean
           opportunity_interests?: string[]
@@ -288,6 +302,7 @@ export type Database = {
           education_level?: string | null
           field_of_study?: string | null
           id?: string
+          is_admin?: boolean
           location?: string | null
           onboarding_completed?: boolean
           opportunity_interests?: string[]

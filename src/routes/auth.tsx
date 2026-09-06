@@ -7,8 +7,9 @@ import { LogoMark } from "@/components/brand/logo";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
-  validateSearch: (search: Record<string, unknown>): { mode?: "signin" | "signup" } => ({
+  validateSearch: (search: Record<string, unknown>): { mode?: "signin" | "signup"; redirect?: string } => ({
     mode: search.mode === "signup" ? "signup" : undefined,
+    redirect: typeof search.redirect === "string" ? search.redirect : undefined,
   }),
   component: AuthPage,
 });
@@ -40,7 +41,7 @@ export function getPasswordStrength(password: string): { label: string; classNam
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { mode: modeParam } = Route.useSearch();
+  const { mode: modeParam, redirect: redirectParam } = Route.useSearch();
   const [mode, setMode] = useState<"signin" | "signup">(modeParam === "signup" ? "signup" : "signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -59,9 +60,9 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
+      if (data.session) navigate({ to: redirectParam ?? "/dashboard" });
     });
-  }, [navigate]);
+  }, [navigate, redirectParam]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -86,7 +87,7 @@ function AuthPage() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       }
-      navigate({ to: "/dashboard" });
+      navigate({ to: redirectParam ?? "/dashboard" });
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -132,7 +133,7 @@ function AuthPage() {
       return;
     }
     if (result.redirected) return;
-    navigate({ to: "/dashboard" });
+    navigate({ to: redirectParam ?? "/dashboard" });
   }
 
   return (

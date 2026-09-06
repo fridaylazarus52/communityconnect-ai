@@ -26,6 +26,9 @@ export const Route = createFileRoute("/assistant")({
       },
     ],
   }),
+  validateSearch: (search: Record<string, unknown>): { prefill?: string } => ({
+    prefill: typeof search.prefill === "string" ? search.prefill : undefined,
+  }),
   component: Assistant,
 });
 
@@ -39,6 +42,7 @@ const PROMPTS = [
 function Assistant() {
   const { isAuthed, ready } = useSession();
   const navigate = useNavigate();
+  const { prefill } = Route.useSearch();
   const create = useServerFn(createThread);
   const [creating, setCreating] = useState(false);
 
@@ -77,7 +81,12 @@ function Assistant() {
           application. Tap a suggestion to get an answer instantly.
         </p>
 
-        <AskAssistant className="mt-8" prompts={PROMPTS} />
+        <AskAssistant
+          className="mt-8"
+          prompts={PROMPTS}
+          initialPrompt={prefill}
+          placeholder={prefill ?? "Ask about scholarships, jobs, NYSC, grants…"}
+        />
 
         <div className="mt-8 flex flex-wrap gap-3">
           {isAuthed && ready ? (

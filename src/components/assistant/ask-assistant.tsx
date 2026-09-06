@@ -11,10 +11,12 @@ export function AskAssistant({
   prompts,
   className = "",
   placeholder = "Ask about scholarships, jobs, NYSC, grants…",
+  initialPrompt,
 }: {
   prompts: string[];
   className?: string;
   placeholder?: string;
+  initialPrompt?: string;
 }) {
   const transport = useMemo(
     () =>
@@ -85,6 +87,13 @@ export function AskAssistant({
       answerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [status]);
+
+  // Auto-submit when an initialPrompt is provided (e.g. from opportunity detail page).
+  useEffect(() => {
+    if (initialPrompt) {
+      submitPrompt(initialPrompt);
+    }
+  }, [initialPrompt, submitPrompt]);
 
   return (
     <div className={className}>

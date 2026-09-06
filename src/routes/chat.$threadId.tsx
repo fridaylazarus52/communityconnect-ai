@@ -7,9 +7,9 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
-import { ArrowLeft, MessageSquare, Plus, Trash2, User } from "lucide-react";
+import { ArrowLeft, Compass, LayoutDashboard, MessageSquare, Plus, Trash2, User } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { getThreadMessages, listThreads, createThread, deleteThread, saveBookmark } from "@/lib/chat.functions";
+import { getThreadMessages, listThreads, createThread, deleteThread, saveBookmark, renameThread } from "@/lib/chat.functions";
 import { LogoMark } from "@/components/brand/logo";
 
 export const Route = createFileRoute("/chat/$threadId")({
@@ -127,10 +127,22 @@ function Sidebar({
   const navigate = useNavigate();
   return (
     <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-      <Link to="/dashboard" className="flex items-center gap-2 border-b border-sidebar-border p-5 font-display text-lg">
+      <Link to="/" className="flex items-center gap-2 border-b border-sidebar-border p-5 font-display text-lg">
         <LogoMark /> CommunityConnect
       </Link>
       <div className="flex-1 overflow-y-auto p-3">
+        <Link
+          to="/dashboard"
+          className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          <LayoutDashboard size={16} aria-hidden /> Overview
+        </Link>
+        <Link
+          to="/opportunities"
+          className="mb-2 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
+        >
+          <Compass size={16} aria-hidden /> Browse Opportunities
+        </Link>
         <button
           onClick={onNew}
           className="mb-3 flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2 text-sm font-semibold text-sidebar-primary-foreground hover:opacity-90"
@@ -138,7 +150,7 @@ function Sidebar({
           <Plus size={16} aria-hidden /> New search
         </button>
         <ul className="space-y-0.5">
-          {threads.map((t) => (
+          {threads.filter((t) => t.title !== "New search" || t.id === activeId).map((t) => (
             <li key={t.id} className="group flex items-center gap-1">
               <Link
                 to="/chat/$threadId"
@@ -188,6 +200,7 @@ function ChatWindow({
 }) {
   const qc = useQueryClient();
   const saveBookmarkFn = useServerFn(saveBookmark);
+  const renameThreadFn = useServerFn(renameThread);
   const [savingBookmarkId, setSavingBookmarkId] = useState<string | null>(null);
   const [savedBookmarkIds, setSavedBookmarkIds] = useState<string[]>([]);
   const [bmStatus, setBmStatus] = useState<string | null>(null);
@@ -229,6 +242,8 @@ function ChatWindow({
       sendMessage({ text: pending });
       sentFirstRef.current = true;
       onFirstMessage();
+      renameThreadFn({ data: { threadId, title: pending.slice(0, 120) } }).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["threads"] });
     }
   }, [threadId, initialMessages.length, sendMessage, onFirstMessage]);
 
@@ -288,6 +303,8 @@ function ChatWindow({
     if (!sentFirstRef.current) {
       sentFirstRef.current = true;
       onFirstMessage();
+      renameThreadFn({ data: { threadId, title: text.slice(0, 120) } }).catch(() => {});
+      qc.invalidateQueries({ queryKey: ["threads"] });
     }
   }
 

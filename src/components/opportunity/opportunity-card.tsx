@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Bookmark, BookmarkCheck, Building2, CalendarClock, MapPin } from "lucide-react";
+import { BadgeCheck, Bookmark, BookmarkCheck, Building2, CalendarClock, MapPin } from "lucide-react";
 import {
   deadlineLabel,
   isClosingSoon,
@@ -49,6 +49,11 @@ export function OpportunityCard({
             {opportunity.featured && (
               <span className="rounded-full bg-accent/15 px-2.5 py-1 text-[11px] font-semibold text-accent-foreground">
                 Featured
+              </span>
+            )}
+            {opportunity.is_verified && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-info/10 px-2.5 py-1 text-[11px] font-semibold text-info">
+                <BadgeCheck className="h-3 w-3" aria-hidden /> Verified
               </span>
             )}
             {closing && (

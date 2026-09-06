@@ -1,8 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Bell, LogOut, Menu, X } from "lucide-react";
+import { Bell, LogOut, Menu, Shield, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useNotifications, useSession } from "@/hooks/use-career-data";
+import { useNotifications, useProfile, useSession } from "@/hooks/use-career-data";
 import { WordMark } from "@/components/brand/logo";
 
 const NAV = [
@@ -23,6 +23,8 @@ export function SiteHeader() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const notificationsQ = useNotifications(isAuthed ? user?.id : undefined);
   const unread = (notificationsQ.data ?? []).filter((n) => !n.read_at).length;
+  const profileQ = useProfile(isAuthed ? user?.id : undefined);
+  const isAdmin = profileQ.data?.is_admin === true;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -58,6 +60,14 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="flex items-center gap-1 rounded-full px-3 py-2 text-[13px] font-medium text-gold transition-colors hover:bg-gold/10 data-[status=active]:bg-gold/10"
+            >
+              <Shield className="h-3.5 w-3.5" aria-hidden /> Admin
+            </Link>
+          )}
         </nav>
 
         <div className="ml-auto flex items-center gap-2 lg:ml-2">
@@ -81,12 +91,7 @@ export function SiteHeader() {
               >
                 <LogOut className="h-3.5 w-3.5" aria-hidden /> Sign out
               </button>
-              <Link
-                to="/dashboard"
-                className="hidden rounded-full bg-primary px-4 py-2 text-[13px] font-semibold text-primary-foreground shadow-soft transition-transform hover:-translate-y-0.5 sm:inline-flex"
-              >
-                My hub
-              </Link>
+              
             </>
           ) : (
             <>
@@ -129,6 +134,14 @@ export function SiteHeader() {
                 {item.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-medium text-gold hover:bg-gold/10"
+              >
+                <Shield className="h-4 w-4" aria-hidden /> Admin
+              </Link>
+            )}
           </nav>
           <div className="mt-3 grid gap-2">
             {isAuthed ? (

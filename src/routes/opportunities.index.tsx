@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { Search, SlidersHorizontal } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { OpportunityCard } from "@/components/opportunity/opportunity-card";
 import {
   useOpportunities,
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/opportunities/")({
 });
 
 function OpportunitiesPage() {
-  const { user } = useSession();
+  const { user, isAuthed, ready } = useSession();
   const opportunitiesQ = useOpportunities();
   const profileQ = useProfile(user?.id);
   const savedQ = useSavedOpportunities(user?.id);
@@ -68,77 +69,85 @@ function OpportunitiesPage() {
     return items;
   }, [opportunitiesQ.data, profileQ.data, category, state, query, sort]);
 
+  const content = (
+    <>
+      <div className="gradient-hero border-b border-border">
+        <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
+          <p className="eyebrow">Opportunity catalogue</p>
+          <h1 className="mt-3 text-4xl font-black tracking-tight text-foreground">
+            Find what you actually qualify for
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
+            {profileQ.data
+              ? "Sorted by how well each opportunity matches your profile."
+              : "Sign in and complete onboarding to see personalised match scores."}
+          </p>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
+        <div className="surface grid gap-3 rounded-2xl p-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
+          <label className="relative min-w-0">
+            <span className="sr-only">Search opportunities</span>
+            <Search
+              className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+              aria-hidden
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by title, organisation or skill"
+              className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-green"
+            />
+          </label>
+
+          <Select label="Category" value={category} onChange={setCategory} options={["All", ...CATEGORIES]} />
+          <Select label="State" value={state} onChange={setState} options={["All", ...NIGERIAN_STATES]} />
+          <Select
+            label="Sort"
+            value={sort}
+            onChange={(v) => setSort(v as "match" | "deadline")}
+            options={["match", "deadline"]}
+            display={{ match: "Best match", deadline: "Closing soonest" }}
+          />
+        </div>
+
+        <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
+          <SlidersHorizontal className="h-4 w-4" aria-hidden />
+          {opportunitiesQ.isLoading ? "Loading opportunities…" : `${results.length} opportunities`}
+        </p>
+
+        <div className="mt-5 grid gap-5 pb-16 md:grid-cols-2 lg:grid-cols-3">
+          {opportunitiesQ.isLoading
+            ? [0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton-shimmer h-72 rounded-2xl" />)
+            : results.map(({ opportunity, match }) => (
+                <OpportunityCard
+                  key={opportunity.id}
+                  opportunity={opportunity}
+                  match={profileQ.data ? match : undefined}
+                  saved={savedIds.includes(opportunity.id)}
+                  onToggleSave={user ? toggleSaved : undefined}
+                />
+              ))}
+        </div>
+
+        {!opportunitiesQ.isLoading && results.length === 0 && (
+          <p className="pb-20 text-sm text-muted-foreground">
+            No opportunities match those filters yet. Try widening the state or category.
+          </p>
+        )}
+      </div>
+    </>
+  );
+
+  if (ready && isAuthed) {
+    return <DashboardShell>{content}</DashboardShell>;
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <SiteHeader />
-      <main className="flex-1">
-        <div className="gradient-hero border-b border-border">
-          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6">
-            <p className="eyebrow">Opportunity catalogue</p>
-            <h1 className="mt-3 text-4xl font-black tracking-tight text-foreground">
-              Find what you actually qualify for
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm text-muted-foreground">
-              {profileQ.data
-                ? "Sorted by how well each opportunity matches your profile."
-                : "Sign in and complete onboarding to see personalised match scores."}
-            </p>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-          <div className="surface grid gap-3 rounded-2xl p-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
-            <label className="relative min-w-0">
-              <span className="sr-only">Search opportunities</span>
-              <Search
-                className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by title, organisation or skill"
-                className="h-11 w-full rounded-xl border border-border bg-background pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-green"
-              />
-            </label>
-
-            <Select label="Category" value={category} onChange={setCategory} options={["All", ...CATEGORIES]} />
-            <Select label="State" value={state} onChange={setState} options={["All", ...NIGERIAN_STATES]} />
-            <Select
-              label="Sort"
-              value={sort}
-              onChange={(v) => setSort(v as "match" | "deadline")}
-              options={["match", "deadline"]}
-              display={{ match: "Best match", deadline: "Closing soonest" }}
-            />
-          </div>
-
-          <p className="mt-5 flex items-center gap-2 text-sm text-muted-foreground">
-            <SlidersHorizontal className="h-4 w-4" aria-hidden />
-            {opportunitiesQ.isLoading ? "Loading opportunities…" : `${results.length} opportunities`}
-          </p>
-
-          <div className="mt-5 grid gap-5 pb-16 md:grid-cols-2 lg:grid-cols-3">
-            {opportunitiesQ.isLoading
-              ? [0, 1, 2, 3, 4, 5].map((i) => <div key={i} className="skeleton-shimmer h-72 rounded-2xl" />)
-              : results.map(({ opportunity, match }) => (
-                  <OpportunityCard
-                    key={opportunity.id}
-                    opportunity={opportunity}
-                    match={profileQ.data ? match : undefined}
-                    saved={savedIds.includes(opportunity.id)}
-                    onToggleSave={user ? toggleSaved : undefined}
-                  />
-                ))}
-          </div>
-
-          {!opportunitiesQ.isLoading && results.length === 0 && (
-            <p className="pb-20 text-sm text-muted-foreground">
-              No opportunities match those filters yet. Try widening the state or category.
-            </p>
-          )}
-        </div>
-      </main>
+      <main className="flex-1">{content}</main>
       <SiteFooter />
     </div>
   );
