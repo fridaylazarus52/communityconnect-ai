@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Bookmark, BookmarkCheck, ExternalLink, Plus } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Bookmark, BookmarkCheck, ExternalLink, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
@@ -103,6 +103,11 @@ function OpportunityDetail() {
             <span className="rounded-full bg-green-soft px-3 py-1 text-[11px] font-semibold text-green">
               {opportunity.category}
             </span>
+            {opportunity.is_verified && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-info/10 px-3 py-1 text-[11px] font-semibold text-info">
+                <BadgeCheck className="h-3 w-3" aria-hidden /> Verified
+              </span>
+            )}
             <span className="rounded-full border border-border px-3 py-1 text-[11px] text-muted-foreground">
               {deadlineLabel(opportunity.deadline)}
             </span>
@@ -115,6 +120,15 @@ function OpportunityDetail() {
           </p>
 
           <p className="mt-6 text-sm leading-relaxed text-foreground">{opportunity.summary}</p>
+
+          {opportunity.eligibility && (
+            <>
+              <h2 className="mt-8 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+                Eligibility
+              </h2>
+              <p className="mt-3 text-sm leading-relaxed text-foreground">{opportunity.eligibility}</p>
+            </>
+          )}
 
           <h2 className="mt-8 text-sm font-semibold uppercase tracking-widest text-muted-foreground">
             Skills in demand
@@ -135,6 +149,21 @@ function OpportunityDetail() {
               value={opportunity.compensation ?? (opportunity.is_paid ? "Paid" : "Not stated")}
             />
             <Detail label="Deadline" value={deadlineLabel(opportunity.deadline)} />
+            {opportunity.source_url && (
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Source</dt>
+                <dd className="mt-1 text-sm">
+                  <a
+                    href={opportunity.source_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-green hover:underline"
+                  >
+                    Official source
+                  </a>
+                </dd>
+              </div>
+            )}
           </dl>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -243,6 +272,9 @@ function OpportunityDetail() {
             </p>
             <Link
               to="/assistant"
+              search={{
+                prefill: `I'm looking at the "${opportunity.title}" role at ${opportunity.organisation}. Here are the details:\n- Category: ${opportunity.category}\n- Location: ${opportunity.location} (${opportunity.work_mode})\n- Compensation: ${opportunity.compensation ?? (opportunity.is_paid ? "Paid" : "Not stated")}\n- Experience: ${opportunity.experience_levels.join(", ") || "Open"}\n- Skills needed: ${opportunity.skills.join(", ") || "Not specified"}\n${opportunity.eligibility ? `- Eligibility: ${opportunity.eligibility}\n` : ""}Am I eligible for this opportunity, and what documents do I need to apply? How can I strengthen my application?`,
+              }}
               className="mt-4 inline-flex rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
             >
               Ask the assistant

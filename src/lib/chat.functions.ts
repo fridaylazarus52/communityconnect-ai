@@ -17,7 +17,7 @@ export const listThreads = createServerFn({ method: "GET" })
 
 export const createThread = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ title: z.string().max(120).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -32,7 +32,7 @@ export const createThread = createServerFn({ method: "POST" })
 
 export const saveSearch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({ query: z.string().min(1).max(300), title: z.string().max(120).optional() }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -64,7 +64,7 @@ export const listSavedSearches = createServerFn({ method: "GET" })
 
 export const saveBookmark = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
+  .validator((input: unknown) =>
     z.object({
       threadId: z.string().uuid(),
       messageId: z.string().uuid(),
@@ -104,7 +104,7 @@ export const listBookmarks = createServerFn({ method: "GET" })
 
 export const getThreadMessages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ threadId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ threadId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     // Verify ownership
     const { data: thread, error: tErr } = await context.supabase
@@ -128,11 +128,26 @@ export const getThreadMessages = createServerFn({ method: "GET" })
 
 export const deleteThread = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) => z.object({ threadId: z.string().uuid() }).parse(input))
+  .validator((input: unknown) => z.object({ threadId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("threads")
       .delete()
+      .eq("id", data.threadId)
+      .eq("user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const renameThread = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((input: unknown) =>
+    z.object({ threadId: z.string().uuid(), title: z.string().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("threads")
+      .update({ title: data.title })
       .eq("id", data.threadId)
       .eq("user_id", context.userId);
     if (error) throw new Error(error.message);

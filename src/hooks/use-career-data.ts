@@ -59,6 +59,7 @@ export function useOpportunities() {
       const { data, error } = await supabase
         .from("opportunities")
         .select("*")
+        .eq("is_active", true)
         .order("featured", { ascending: false })
         .order("deadline", { ascending: true });
       if (error) throw new Error(error.message);

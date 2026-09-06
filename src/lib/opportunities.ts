@@ -15,7 +15,11 @@ export type Opportunity = {
   skills: string[];
   deadline: string | null;
   apply_url: string | null;
+  source_url: string | null;
+  eligibility: string | null;
   featured: boolean;
+  is_verified: boolean;
+  is_active: boolean;
   created_at: string;
 };
 
@@ -34,6 +38,7 @@ export type CareerProfile = {
   career_goal: string | null;
   work_preference: string | null;
   onboarding_completed: boolean;
+  is_admin: boolean;
 };
 
 export const CATEGORIES = [

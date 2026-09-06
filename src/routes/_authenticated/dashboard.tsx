@@ -6,22 +6,22 @@ import {
   Bookmark,
   ChevronRight,
   Clock,
+  Compass,
   GraduationCap,
-  LogOut,
   MapPin,
   MessageSquare,
-  Plus,
   Search,
   Sparkles,
   Star,
   Tags,
-  User,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { createThread, listThreads, saveSearch, listSavedSearches, listBookmarks } from "@/lib/chat.functions";
-import { LogoMark } from "@/components/brand/logo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { OpportunityCard } from "@/components/opportunity/opportunity-card";
+import { useOpportunities, useSavedOpportunities, useSession } from "@/hooks/use-career-data";
+import { useToggleSaved } from "@/hooks/use-save-opportunity";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 type ProfileData = {
   display_name: string | null;
@@ -70,14 +70,6 @@ function getGreeting() {
   return "Good evening";
 }
 
-function getInitials(name?: string | null) {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
 function formatRelativeTime(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
   const minutes = Math.round(diffMs / 60000);
@@ -118,6 +110,13 @@ function Dashboard() {
     queryFn: () => listBookmarksFn(),
   });
 
+  const opportunitiesQ = useOpportunities();
+  const { user } = useSession();
+  const savedOppsQ = useSavedOpportunities(user?.id);
+  const savedIds = savedOppsQ.data ?? [];
+  const toggleSaved = useToggleSaved(user?.id, savedIds);
+  const featuredOpps = (opportunitiesQ.data ?? []).slice(0, 3);
+
   const profileQ = useQuery<ProfileData | null>({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -141,8 +140,6 @@ function Dashboard() {
     const checks = [!!p.location, !!p.education_level, !!(p.sector_interests && p.sector_interests.length > 0)];
     return Math.round((checks.filter(Boolean).length / checks.length) * 100);
   }, [profileQ.data]);
-
-  const identityLabel = profileQ.data?.display_name || profileQ.data?.email || "Account";
 
   const recommendations = useMemo(() => {
     const profile = profileQ.data;
@@ -249,88 +246,9 @@ function Dashboard() {
     start(q);
   }
 
-  async function signOut() {
-    await supabase.auth.signOut();
-    navigate({ to: "/", replace: true });
-  }
-
   return (
-    <div className="flex h-screen overflow-hidden bg-background text-foreground">
-      <aside className="hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
-        <Link to="/dashboard" className="flex items-center gap-2 border-b border-sidebar-border p-5 font-display text-lg">
-          <LogoMark /> CommunityConnect
-        </Link>
-        <div className="flex-1 overflow-y-auto p-3">
-          <button
-            onClick={() => start("Show me new opportunities I might qualify for")}
-            disabled={busy}
-            className="mb-4 flex w-full items-center justify-center gap-2 rounded-full bg-sidebar-primary px-4 py-2.5 text-sm font-semibold text-sidebar-primary-foreground shadow-sm transition-transform hover:-translate-y-0.5 hover:opacity-90 disabled:opacity-60"
-          >
-            <Plus size={16} aria-hidden /> New search
-          </button>
-          <div className="flex items-center gap-1.5 px-2 py-2 text-[11px] font-mono uppercase tracking-wider text-sidebar-foreground/60">
-            <Clock size={12} aria-hidden /> Recent
-          </div>
-          {threadsQ.isLoading ? (
-            <div className="space-y-1 px-2">
-              <Skeleton className="h-8 w-full bg-sidebar-accent/60" />
-              <Skeleton className="h-8 w-full bg-sidebar-accent/60" />
-              <Skeleton className="h-8 w-full bg-sidebar-accent/60" />
-            </div>
-          ) : threadsQ.data?.length === 0 ? (
-            <div className="px-2 py-3 text-xs text-sidebar-foreground/60">
-              No searches yet — ask something to get started.
-            </div>
-          ) : (
-            <ul className="space-y-0.5">
-              {threadsQ.data?.map((t) => (
-                <li key={t.id}>
-                  <Link
-                    to="/chat/$threadId"
-                    params={{ threadId: t.id }}
-                    className="flex items-center gap-2 truncate rounded-lg px-3 py-2 text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                  >
-                    <MessageSquare size={14} className="shrink-0 opacity-60" aria-hidden />
-                    <span className="truncate">{t.title}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
-        <div className="border-t border-sidebar-border p-3">
-          <div className="mb-2 flex items-center gap-2 rounded-xl px-2 py-2">
-            <Avatar className="h-8 w-8 border border-sidebar-border">
-              {profileQ.data?.avatar_url ? (
-                <AvatarImage src={profileQ.data.avatar_url} alt={identityLabel} />
-              ) : null}
-              <AvatarFallback className="bg-sidebar-accent text-xs font-semibold text-sidebar-foreground">
-                {getInitials(identityLabel)}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-sm font-medium text-sidebar-foreground">{identityLabel}</div>
-              <div className="text-xs text-sidebar-foreground/50">Signed in</div>
-            </div>
-          </div>
-          <Link
-            to="/profile"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          >
-            <User size={15} aria-hidden /> Edit profile
-          </Link>
-          <button
-            onClick={signOut}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground"
-          >
-            <LogOut size={15} aria-hidden /> Sign out
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-6 py-16">
+    <DashboardShell>
+      <div className="mx-auto max-w-3xl px-6 py-16">
           <div className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-wider text-green">
             <Sparkles size={13} aria-hidden /> Dashboard
           </div>
@@ -510,13 +428,13 @@ function Dashboard() {
                 ))}
               </div>
 
-              {threadsQ.data?.length ? (
+              {threadsQ.data?.filter((t) => t.title !== "New search").length ? (
                 <div className="mt-6 rounded-3xl border border-border bg-card p-4">
                   <div className="mb-3 flex items-center gap-1.5 font-medium">
                     <Clock size={14} className="text-muted-foreground" aria-hidden /> Recently viewed
                   </div>
                   <div className="space-y-2 text-sm text-muted-foreground">
-                    {threadsQ.data.slice(0, 5).map((thread) => (
+                    {threadsQ.data.filter((t) => t.title !== "New search").slice(0, 5).map((thread) => (
                       <button
                         key={thread.id}
                         type="button"
@@ -579,8 +497,35 @@ function Dashboard() {
               ) : null}
             </div>
           </div>
-        </div>
-      </main>
-    </div>
+
+          <div className="mt-12">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <Compass size={12} aria-hidden /> Opportunities open now
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  A snapshot of the catalogue — click any card for details and match score.
+                </p>
+              </div>
+              <Link to="/opportunities" className="text-sm font-semibold text-green hover:underline">
+                See all
+              </Link>
+            </div>
+            <div className="mt-5 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              {opportunitiesQ.isLoading
+                ? [0, 1, 2].map((i) => <Skeleton key={i} className="h-64 rounded-2xl" />)
+                : featuredOpps.map((opportunity) => (
+                    <OpportunityCard
+                      key={opportunity.id}
+                      opportunity={opportunity}
+                      saved={savedIds.includes(opportunity.id)}
+                      onToggleSave={user ? toggleSaved : undefined}
+                    />
+                  ))}
+            </div>
+          </div>
+      </div>
+    </DashboardShell>
   );
 }
